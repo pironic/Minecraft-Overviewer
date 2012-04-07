@@ -124,14 +124,14 @@ class Textures(object):
 
         * The overviewer_core/data/textures dir
         
-        In all of these, files are searched for in '.', 'misc/', and
+        In all of these, files are searched for in '.', 'anim', 'misc/', and
         'environment/'.
         
         """
 
         # a list of subdirectories to search for a given file,
         # after the obvious '.'
-        search_dirs = ['misc', 'environment']
+        search_dirs = ['anim', 'misc', 'environment']
         search_zip_paths = [filename,] + [d + '/' + filename for d in search_dirs]
         def search_dir(base):
             """Search the given base dir for filename, in search_dirs."""
@@ -290,7 +290,7 @@ class Textures(object):
         if hasattr(self, "lightcolor"):
             return self.lightcolor
         try:
-            lightcolor = list(_load_image("light_normal.png").getdata())
+            lightcolor = list(self.load_image("light_normal.png").getdata())
         except Exception:
             logging.warning("Light color image could not be found.")
             lightcolor = None
@@ -759,8 +759,18 @@ def grass(self, blockid, data):
 block(blockid=3, top_index=2)
 # cobblestone
 block(blockid=4, top_index=16)
-# wooden plank
-block(blockid=5, top_index=4)
+
+# wooden planks
+@material(blockid=5, data=range(4), solid=True)
+def wooden_planks(self, blockid, data):
+    if data == 0: # normal
+        return self.build_block(self.terrain_images[4],self.terrain_images[4])
+    if data == 1: # pine
+        return self.build_block(self.terrain_images[198],self.terrain_images[198])
+    if data == 2: # birch
+        return self.build_block(self.terrain_images[214],self.terrain_images[214])
+    if data == 3: # jungle wood
+        return self.build_block(self.terrain_images[199],self.terrain_images[199])
 
 @material(blockid=6, data=range(16), transparent=True)
 def saplings(self, blockid, data):
@@ -842,7 +852,7 @@ block(blockid=15, top_index=33)
 # coal ore
 block(blockid=16, top_index=34)
 
-@material(blockid=17, data=range(3), solid=True)
+@material(blockid=17, data=range(4), solid=True)
 def wood(self, blockid, data):
     top = self.terrain_images[21]
     if data == 0: # normal
@@ -856,6 +866,9 @@ def wood(self, blockid, data):
 
 @material(blockid=18, data=range(16), transparent=True, solid=True)
 def leaves(self, blockid, data):
+    # mask out the bits 4 and 8
+    # they are used for player placed and check-for-decay blocks
+    data = data & 0x3
     t = self.terrain_images[52]
     if data == 1:
         # pine!
@@ -910,7 +923,16 @@ def furnaces(self, blockid, data):
         return self.build_full_block(top, None, None, side, side)
 
 # sandstone
-block(blockid=24, top_index=176, side_index=192)
+@material(blockid=24, data=range(3), solid=True)
+def sandstone(self, blockid, data):
+    top = self.terrain_images[176]
+    if data == 0: # normal
+        return self.build_block(top, self.terrain_images[192])
+    if data == 1: # hieroglyphic
+        return self.build_block(top, self.terrain_images[229])
+    if data == 2: # soft
+        return self.build_block(top, self.terrain_images[230])
+
 # note block
 block(blockid=25, top_index=74)
 
@@ -1472,6 +1494,9 @@ block(blockid=52, top_index=34, transparent=True)
 def stairs(self, blockid, data):
 
     # first, rotations
+    # preserve the upside-down bit
+    upside_down = data & 0x4
+    data = data & 0x3
     if self.rotation == 1:
         if data == 0: data = 2
         elif data == 1: data = 3
@@ -1487,6 +1512,7 @@ def stairs(self, blockid, data):
         elif data == 1: data = 2
         elif data == 2: data = 0
         elif data == 3: data = 1
+    data = data | upside_down
 
     if blockid == 53: # wooden
         texture = self.terrain_images[4]
@@ -1923,7 +1949,7 @@ def door(self, blockid, data):
     return img
 
 # ladder
-@material(blockd=65, data=[2, 3, 4, 5], transparent=True)
+@material(blockid=65, data=[2, 3, 4, 5], transparent=True)
 def ladder(self, blockid, data):
 
     # first rotations
@@ -1943,28 +1969,28 @@ def ladder(self, blockid, data):
         elif data == 4: data = 3
         elif data == 5: data = 2
 
-    img = Image.new("RGBA", (24,24), bgcolor)
-    raw_texture = terrain_images[83]
+    img = Image.new("RGBA", (24,24), self.bgcolor)
+    raw_texture = self.terrain_images[83]
 
     if data == 5:
         # normally this ladder would be obsured by the block it's attached to
         # but since ladders can apparently be placed on transparent blocks, we 
         # have to render this thing anyway.  same for data == 2
-        tex = transform_image_side(raw_texture)
+        tex = self.transform_image_side(raw_texture)
         alpha_over(img, tex, (0,6), tex)
-        return generate_texture_tuple(img, blockID)
+        return img
     if data == 2:
-        tex = transform_image_side(raw_texture).transpose(Image.FLIP_LEFT_RIGHT)
+        tex = self.transform_image_side(raw_texture).transpose(Image.FLIP_LEFT_RIGHT)
         alpha_over(img, tex, (12,6), tex)
-        return generate_texture_tuple(img, blockID)
+        return img
     if data == 3:
-        tex = transform_image_side(raw_texture).transpose(Image.FLIP_LEFT_RIGHT)
+        tex = self.transform_image_side(raw_texture).transpose(Image.FLIP_LEFT_RIGHT)
         alpha_over(img, tex, (0,0), tex)
-        return generate_texture_tuple(img, blockID)
+        return img
     if data == 4:
-        tex = transform_image_side(raw_texture)
+        tex = self.transform_image_side(raw_texture)
         alpha_over(img, tex, (12,0), tex)
-        return generate_texture_tuple(img, blockID)
+        return img
 
 
 # wall signs
