@@ -179,7 +179,7 @@ class JSObserver(Observer):
         self.last_update_time = -1 
         self._current_value = -1
         self.minrefresh = 1000*minrefresh
-        self.logfile = open(os.path.join(outputdir, "progress.js"), "w+", 0)
+        self.logfile = open(os.path.join(outputdir, "progress.json"), "w+", 0)
 
     def start(self, max_value):
         self.logfile.seek(0)
@@ -199,7 +199,7 @@ class JSObserver(Observer):
         self.end_time = time.time()
         duration = self.end_time - self.start_time
         self.logfile.seek(0)
-        self.logfile.write('{"message": "Render completed in %dm %ds", "update": "false"}' % (duration//60, duration - duration//60))
+        self.logfile.write('{"message": "Render completed in %dm %ds @ %d", "update": "false"}' % (duration//60, duration - duration//60, time.time()))
         self.logfile.truncate()
         self.logfile.close()
 

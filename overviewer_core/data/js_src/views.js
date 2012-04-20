@@ -113,18 +113,19 @@ overviewer.views.ProgressView = Backbone.View.extend({
         this.el.id = 'progressDiv';
         this.el.innerHTML = 'Current Render Progress';
         overviewer.map.controls[google.maps.ControlPosition.BOTTOM_RIGHT].push(this.el);
-        this.hidden = true;
+        this.el.hidden = true;
         $.ajaxSetup({cache: false});
     },
     updateProgress: function() {
         e = this;
-        $.getJSON('progress.js', null, function(d){
+        $.getJSON('progress.json', null, function(d){
             e.el.hidden = false;
             e.el.innerHTML = d['message'];
             if (d.update > 0) {
                 setTimeout("e.updateProgress()", d.update);
             } else {
-                e.el.hidden = true;
+                // e.el.hidden = true;
+                setTimeout("e.updateProgress()", 30000); // wait 5 min and check if updating again.
             }
         });
     }
