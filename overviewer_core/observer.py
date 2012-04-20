@@ -18,6 +18,7 @@ import logging
 import progressbar
 import sys
 import os
+import datetime
 
 class Observer(object):
     """Base class that defines the observer interface.
@@ -199,7 +200,8 @@ class JSObserver(Observer):
         self.end_time = time.time()
         duration = self.end_time - self.start_time
         self.logfile.seek(0)
-        self.logfile.write('{"message": "Render completed in %dm %ds @ %d", "update": "false"}' % (duration//60, duration - duration//60, time.time()))
+        now = now = datetime.datetime.now()
+        self.logfile.write('{"message": "Render completed in %dm %ds @ %d", "update": "false"}' % (duration//60, duration - duration//60, now.strftime("%d-%b-%Y %H:%M")))
         self.logfile.truncate()
         self.logfile.close()
 
@@ -224,7 +226,7 @@ class JSObserver(Observer):
         if self._need_update():
             refresh = max(1500*(time.time() - self.last_update_time), self.minrefresh)
             self.logfile.seek(0)
-            self.logfile.write('{"message": "Rendered %d of %d tiles (%d%%)", "update": %d }' % (self.get_current_value(), self.get_max_value(), self.get_percentage(), refresh))
+            self.logfile.write('{"message": "Currently Rendering - %d of %d tiles (%d%%)", "update": %d }' % (self.get_current_value(), self.get_max_value(), self.get_percentage(), refresh))
             self.logfile.truncate()
             self.logfile.flush()
             self.last_update_time = time.time()
