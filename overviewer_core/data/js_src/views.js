@@ -120,9 +120,11 @@ overviewer.views.ProgressView = Backbone.View.extend({
         e = this;
         $.getJSON('progress.json', null, function(d){
             e.el.hidden = false;
-            e.el.innerHTML = d['message'];
-            if (d.update != null && d.update > 0) {
-                setTimeout("e.updateProgress()", d.update);
+            if (d) {
+                e.el.innerHTML = d.message;
+                if (d.update > 0) {
+                    setTimeout("e.updateProgress()", d.update);
+                }
             } else {
                 // e.el.hidden = true;
                 setTimeout("e.updateProgress()", 300000); // wait 5 min and check if updating again.
