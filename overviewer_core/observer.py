@@ -18,7 +18,6 @@ import logging
 import progressbar
 import sys
 import os
-import datetime
 
 class Observer(object):
     """Base class that defines the observer interface.
@@ -200,8 +199,7 @@ class JSObserver(Observer):
         self.end_time = time.time()
         duration = self.end_time - self.start_time
         self.logfile.seek(0)
-        now = now = datetime.datetime.now()
-        self.logfile.write('{"message": "Render completed in %dm %ds @ %d", "update": "false"}' % (duration//60, duration - duration//60, now.strftime("%d-%b-%Y %H:%M")))
+        self.logfile.write('{"message": "Render completed in %dm %ds", "update": "false"}' % (duration//60, duration - duration//60))
         self.logfile.truncate()
         self.logfile.close()
 
