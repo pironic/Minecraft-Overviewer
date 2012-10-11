@@ -52,6 +52,10 @@ class Nether(RenderPrimitive):
 
 class HeightFading(RenderPrimitive):
     name = "height-fading"
+    options = {
+        # 128 is *WRONG*, it should be 64. but we're grandfathered in for now
+        "sealevel": ("target sea level", 128),
+    }
     
     black_color = Image.new("RGB", (24,24), (0,0,0))
     white_color = Image.new("RGB", (24,24), (255,255,255))
@@ -62,6 +66,15 @@ class Depth(RenderPrimitive):
         "min": ("lowest level of blocks to render", 0),
         "max": ("highest level of blocks to render", 255),
     }
+    
+class Exposed(RenderPrimitive):
+    name = "exposed"
+    options = {
+        "mode": ("0 = exposed blocks only, 1 = unexposed blocks only", 0),
+    }
+    
+class NoFluids(RenderPrimitive):
+    name = "no-fluids"
 
 class EdgeLines(RenderPrimitive):
     name = "edge-lines"
@@ -155,6 +168,10 @@ class ClearBase(RenderPrimitive):
 class Overlay(RenderPrimitive):
     name = "overlay"
 
+    options = {
+        'overlay_color' : ('a tuple of (r, g, b, a) for coloring the overlay', None),
+    }
+
     @property
     def whitecolor(self):
         whitecolor = getattr(self, "_whitecolor", None)
@@ -182,10 +199,26 @@ class Overlay(RenderPrimitive):
 class SpawnOverlay(Overlay):
     name = "overlay-spawn"
 
+class SlimeOverlay(Overlay):
+    name = "overlay-slime"
+
 class MineralOverlay(Overlay):
     name = "overlay-mineral"
     options = {
         'minerals' : ('a list of (blockid, (r, g, b)) tuples for coloring minerals', None),
+    }
+
+class BiomeOverlay(Overlay):
+    name = "overlay-biomes"
+    options = {
+        'biomes' : ('a list of (biome, (r, g, b)) tuples for coloring biomes', None),
+        'alpha'  : ('an integer value between 0 (transparent) and 255 (opaque)', None),
+    }
+
+class Hide(RenderPrimitive):
+    name = "hide"
+    options = {
+        'blocks' : ('a list of blockids or (blockid, data) tuples of blocks to hide', []),
     }
 
 # Built-in rendermodes for your convenience!

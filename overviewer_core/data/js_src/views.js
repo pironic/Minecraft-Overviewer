@@ -4,8 +4,19 @@ overviewer.views= {}
 overviewer.views.WorldView = Backbone.View.extend({
     initialize: function(opts) {
         this.options.mapTypes = [];
+        this.options.overlayMapTypes = [];
         this.options.mapTypeIds = [];
+        this.options.overlayMapTypeIds = [];
+
+        var curTileSet = this.model.get("tileSets").at(0);
+        var spawn = curTileSet.get("spawn");
+        if (spawn == "false") {
+            var spawn = [0,64,0];
+        }
+        this.options.lastViewport = [spawn[0],spawn[1],spawn[2],curTileSet.get("defaultZoom")];
+
         this.model.get("tileSets").each(function(tset, index, list) {
+            // ignore overlays:
             var ops = {
                 getTileUrl: overviewer.gmap.getTileUrlGenerator(tset.get("path"), tset.get("base"), tset.get("imgextension")),
                 'tileSize':     new google.maps.Size(
@@ -20,11 +31,24 @@ overviewer.views.WorldView = Backbone.View.extend({
             newMapType.shortname = tset.get("name");
             newMapType.alt = "Minecraft " + tset.get("name") + " Map";
             newMapType.projection = new overviewer.classes.MapProjection();
-    
-            this.options.mapTypes.push(newMapType);
-            this.options.mapTypeIds.push(overviewerConfig.CONST.mapDivId + this.model.get("name") + tset.get("name"));
+            newMapType._ov_tileSet = tset;
+
+            if (tset.get("isOverlay")) {
+                newMapType.tiles = tset.get("tilesets");
+                this.options.overlayMapTypes.push(newMapType);
+                this.options.overlayMapTypeIds.push(overviewerConfig.CONST.mapDivId + this.model.get("name") + tset.get("name"));
+            } else {
+                this.options.mapTypes.push(newMapType);
+                this.options.mapTypeIds.push(overviewerConfig.CONST.mapDivId + this.model.get("name") + tset.get("name"));
+            }
 
         }, this);
+
+        this.model.get("tileSets").each(function(tset, index, list) {
+            // ignore non-overlays:
+            if (!tset.get("isOverlay")) { return; };
+
+        });
     },
 });
 
@@ -33,6 +57,8 @@ overviewer.views.WorldView = Backbone.View.extend({
 overviewer.views.WorldSelectorView = Backbone.View.extend({
     initialize: function() {
         if(overviewer.collections.worldViews.length > 1) {
+            $(this.el).addClass("customControl");
+            
             // a div will have already been created for us, we just
             // need to register it with the google maps control
             var selectBox = document.createElement('select');
@@ -40,6 +66,9 @@ overviewer.views.WorldSelectorView = Backbone.View.extend({
                 var o = document.createElement("option");
                 o.value = elem.model.get("name");
                 o.innerHTML = elem.model.get("name");
+                if (elem.model == overviewer.mapModel.get("currentWorldView").model) {
+                    o.selected=true;
+                }
                 $(o).data("viewObj", elem);
                 selectBox.appendChild(o);
 
@@ -70,7 +99,7 @@ overviewer.views.CompassView = Backbone.View.extend({
     initialize: function() {
         this.el.index=0;
         var compassImg = document.createElement('IMG');
-        compassImg.src = overviewerConfig.CONST.image.compass;
+        compassImg.src = '';  // this will be set properly in the render function (below)
         this.el.appendChild(compassImg);
 
         overviewer.map.controls[google.maps.ControlPosition.TOP_RIGHT].push(this.el);
@@ -108,7 +137,34 @@ overviewer.views.CoordboxView = Backbone.View.extend({
     }
 });
 
-
+overviewer.views.ProgressView = Backbone.View.extend({	
+    initialize: function() {
+        this.el.id = 'progressDiv';
+        this.el.innerHTML = 'Current Render Progress';
+        overviewer.map.controls[google.maps.ControlPosition.BOTTOM_RIGHT].push(this.el);
+        this.el.hidden = true;
+        $.ajaxSetup({cache: false});
+    },
+    updateProgress: function() {
+        e = this;
+        $.getJSON('progress.json', null, function(d){
+            if (!(d == null||d=='')) {
+                e.el.hidden = false;
+                e.el.innerHTML = d['message'];
+                if (d.update > 0) {
+                    setTimeout("e.updateProgress()", d.update);
+                } else {
+                    setTimeout("e.updateProgress()", 60000);
+                    e.el.innerHTML="Hidden - d.update < 0";
+                    e.el.hidden = true;
+                }
+            } else {
+                e.el.innerHTML="Hidden - !!d==false";
+                e.el.hidden = true;
+            }
+        });
+    }
+});
 
 /* GoogleMapView is responsible for dealing with the GoogleMaps API to create the 
  */
@@ -119,17 +175,16 @@ overviewer.views.GoogleMapView = Backbone.View.extend({
         var curWorld = this.model.get("currentWorldView").model;
 
         var curTset = curWorld.get("tileSets").at(0);
+        var spawn = curTset.get("spawn");
+        if (spawn == "false") {
+            var spawn = [0,64,0];
+        }
+        var mapcenter = overviewer.util.fromWorldToLatLng(
+           spawn[0],
+           spawn[1],
+           spawn[2],
+           curTset);
 
-        /*
-           var defaultCenter = overviewer.util.fromWorldToLatLng(
-           overviewerConfig.map.center[0], 
-           overviewerConfig.map.center[1],
-           overviewerConfig.map.center[2],
-           curTset.get("defaultZoom"));
-           */
-        var lat = 0.62939453125;// TODO defaultCenter.lat();
-        var lng = 0.38525390625; // TODO defaultCenter.lng();
-        var mapcenter = new google.maps.LatLng(lat, lng);
 
         this.options.mapTypes=[];
         this.options.mapTypeIds=[];
@@ -188,7 +243,7 @@ overviewer.views.GoogleMapView = Backbone.View.extend({
         var gmapCurrent = overviewer.map.getMapTypeId();
         for (id in currentWorldView.options.mapTypeIds) {
             if (currentWorldView.options.mapTypeIds[id] == gmapCurrent) {
-                this.options.currentTileSet = currentWorldView.model.get("tileSets").at(id);
+                this.options.currentTileSet = currentWorldView.options.mapTypes[id]._ov_tileSet;
             }
         }
 
@@ -200,6 +255,114 @@ overviewer.views.GoogleMapView = Backbone.View.extend({
 });
 
 
+/**
+ * OverlayControlView
+ */
+overviewer.views.OverlayControlView = Backbone.View.extend({
+    /** OverlayControlVIew::initialize
+     */
+    initialize: function(opts) {
+        $(this.el).addClass("customControl");
+        overviewer.map.controls[google.maps.ControlPosition.TOP_RIGHT].push(this.el); 
+    },
+    registerEvents: function(me) {
+        overviewer.mapModel.bind("change:currentWorldView", me.render, me);
+    },
+
+    /**
+     * OverlayControlView::render
+     */
+    render: function() {
+        this.el.innerHTML="";
+        
+        // hide all visible overlays:
+        overviewer.map.overlayMapTypes.clear()
+
+        // if this world has no overlays, don't create this control
+        var mapTypes = overviewer.mapModel.get('currentWorldView').options.overlayMapTypes;
+        if (mapTypes.length == 0) { return; }
+
+        var controlText = document.createElement('DIV');
+        controlText.innerHTML = "Overlays";
+        
+        var controlBorder = document.createElement('DIV');
+        $(controlBorder).addClass('top');
+        this.el.appendChild(controlBorder);
+        controlBorder.appendChild(controlText);
+        
+        var dropdownDiv = document.createElement('DIV');
+        $(dropdownDiv).addClass('dropDown');
+        this.el.appendChild(dropdownDiv);
+        dropdownDiv.innerHTML='';
+        
+        $(controlText).click(function() {
+                $(controlBorder).toggleClass('top-active');
+                $(dropdownDiv).toggle();
+        });
+
+        var currentTileSetPath = overviewer.mapView.options.currentTileSet.get('path');
+        
+        for (i in mapTypes) {
+            var mt = mapTypes[i];
+            // if this overlay specifies a list of valid tilesets, then skip over any invalid tilesets 
+            if ((mt.tiles.length > 0) && (mt.tiles.indexOf(currentTileSetPath) ==-1)) {
+                continue;
+            }
+            this.addItem({label: mt.name,
+                    name: mt.name,
+                    mt: mt,
+
+                    action: function(this_item, checked) {
+                        if (checked) {
+                            overviewer.map.overlayMapTypes.push(this_item.mt);
+                        } else {
+                            var idx_to_delete = -1;
+                            overviewer.map.overlayMapTypes.forEach(function(e, j) {
+                                if (e == this_item.mt) {
+                                    idx_to_delete = j;
+                                }
+                            });
+                            if (idx_to_delete >= 0) {
+                                overviewer.map.overlayMapTypes.removeAt(idx_to_delete);
+                            }
+                        }
+
+                    }
+            });
+        }
+
+
+    },
+
+    addItem: function(item) {
+        var itemDiv = document.createElement('div');
+        var itemInput = document.createElement('input');
+        itemInput.type='checkbox';
+
+        // if this overlay is already visible, set the checkbox
+        // to checked
+        overviewer.map.overlayMapTypes.forEach(function(e, j) {
+            if (e == item.mt) {
+                itemInput.checked=true;
+            }
+        });
+        
+        // give it a name
+        $(itemInput).attr("_mc_overlayname", item.name);
+        jQuery(itemInput).click((function(local_item) {
+            return function(e) {
+                item.action(local_item, e.target.checked);
+            };
+        })(item));
+
+        this.$(".dropDown")[0].appendChild(itemDiv);
+        itemDiv.appendChild(itemInput);
+        var textNode = document.createElement('text');
+        textNode.innerHTML = item.label + '<br/>';
+
+        itemDiv.appendChild(textNode);
+    }
+});
 
 
 /**
@@ -220,38 +383,27 @@ overviewer.views.SignControlView = Backbone.View.extend({
             // workaround IE issue.  bah!
             if (typeof markers=="undefined") { return; }
             me.render();
-            // hide markers, if necessary
+
+
+            // hide markers that are part of other tilesets than this
             // for each markerSet, check:
             //    if the markerSet isnot part of this tileset, hide all of the markers
-            var curMarkerSet = overviewer.mapView.options.currentTileSet.attributes.path;
+            var curMarkerSet = overviewer.mapView.options.currentTileSet.get("path");
             var dataRoot = markers[curMarkerSet];
-            if (!dataRoot) { 
-                // this tileset has no signs, so hide all of them
-                for (markerSet in markersDB) {
-                    if (markersDB[markerSet].created) {
-                        jQuery.each(markersDB[markerSet].raw, function(i, elem) {
-                            elem.markerObj.setVisible(false);
-                        });
-                    }
-                }
 
-                return; 
-            }
-            var groupsForThisTileSet = jQuery.map(dataRoot, function(elem, i) { return elem.groupName;})
-            for (markerSet in markersDB) {
-                if (jQuery.inArray(markerSet, groupsForThisTileSet) == -1){
-                    // hide these
-                    if (markersDB[markerSet].created) {
-                        jQuery.each(markersDB[markerSet].raw, function(i, elem) {
-                            elem.markerObj.setVisible(false);
-                        });
-                    }
-                    markersDB[markerSet].checked=false;
+            jQuery.each(markers, function(key, markerSet) {
+                if (key != curMarkerSet) {
+                    jQuery.each(markerSet, function(i, markerGroup) {
+                        if (typeof markerGroup.markerObjs != "undefined") {
+                            jQuery.each(markerGroup.markerObjs, function(j, markerObj) {
+                                markerObj.setVisible(false);
+                            });
+                        }
+                    });
                 }
-                // make sure the checkboxes checked if necessary
-                $("[_mc_groupname=" + markerSet + "]").attr("checked", markersDB[markerSet].checked);
+            });
 
-            }
+            return;
 
         });
 
@@ -261,18 +413,18 @@ overviewer.views.SignControlView = Backbone.View.extend({
      */
     render: function() {
 
-        var curMarkerSet = overviewer.mapView.options.currentTileSet.attributes.path;
+        var curMarkerSet = overviewer.mapView.options.currentTileSet.get("path");
         //var dataRoot = overviewer.collections.markerInfo[curMarkerSet];
         var dataRoot = markers[curMarkerSet];
 
-        this.el.innerHTML=""
+        this.el.innerHTML="";
         
         // if we have no markerSets for this tileset, do nothing:
         if (!dataRoot) { return; }
 
 
         var controlText = document.createElement('DIV');
-        controlText.innerHTML = "Signs";
+        controlText.innerHTML = overviewer.mapView.options.currentTileSet.get("poititle");
 
         var controlBorder = document.createElement('DIV');
         $(controlBorder).addClass('top');
@@ -291,39 +443,54 @@ overviewer.views.SignControlView = Backbone.View.extend({
         });
 
 
-        // add some menus
-        for (i in dataRoot) {
-            var group = dataRoot[i];
-            this.addItem({label: group.displayName, groupName:group.groupName, action:function(this_item, checked) {
-                markersDB[this_item.groupName].checked = checked;
-                jQuery.each(markersDB[this_item.groupName].raw, function(i, elem) {
-                    elem.markerObj.setVisible(checked);
-                });
-            }});
-        }
 
-        iconURL = overviewerConfig.CONST.image.signMarker;
         //dataRoot['markers'] = [];
         //
         for (i in dataRoot) {
             var groupName = dataRoot[i].groupName;
-            if (!markersDB[groupName].created) {
+            if (!dataRoot[i].created) {
+                dataRoot[i].markerObjs = [];
                 for (j in markersDB[groupName].raw) {
                     var entity = markersDB[groupName].raw[j];
+                    if (entity['icon']) {
+                        iconURL = entity['icon'];
+                    } else {
+                        iconURL = dataRoot[i].icon;
+                    }
                     var marker = new google.maps.Marker({
                             'position': overviewer.util.fromWorldToLatLng(entity.x,
                                 entity.y, entity.z, overviewer.mapView.options.currentTileSet),
                             'map':      overviewer.map,
-                            'title':    jQuery.trim(entity.Text1 + "\n" + entity.Text2 + "\n" + entity.Text3 + "\n" + entity.Text4), 
+                            'title':    jQuery.trim(entity.text), 
                             'icon':     iconURL,
                             'visible':  false
                     }); 
-                    if (entity['id'] == 'Sign') {
+                    if(entity['createInfoWindow'] == true) {
                         overviewer.util.createMarkerInfoWindow(marker);
+                    } else {
+                        if(dataRoot[i].createInfoWindow == true) {
+                            overviewer.util.createMarkerInfoWindow(marker);
+                        }
                     }
-                    jQuery.extend(entity, {markerObj: marker});
+                    dataRoot[i].markerObjs.push(marker);
                 }
-                markersDB[groupName].created = true;
+                dataRoot[i].created = true;
+            }
+        }
+        
+        // add some menus
+        for (i in dataRoot) {
+            var group = dataRoot[i];
+            this.addItem({group: group, action:function(this_item, checked) {
+                this_item.group.checked = checked;
+                jQuery.each(this_item.group.markerObjs, function(i, markerObj) {
+                    markerObj.setVisible(checked);
+                });
+            }});
+            if (group.checked) {
+                jQuery.each(group.markerObjs, function(i, markerObj) {
+                    markerObj.setVisible(true);
+                });
             }
         }
 
@@ -334,9 +501,13 @@ overviewer.views.SignControlView = Backbone.View.extend({
         var itemInput = document.createElement('input');
         itemInput.type='checkbox';
 
+        if (item.group.checked) {
+            itemInput.checked="true";
+        }
+
         // give it a name
-        $(itemInput).data('label',item.label);
-        $(itemInput).attr("_mc_groupname", item.groupName);
+        $(itemInput).data('label',item.group.displayName);
+        $(itemInput).attr("_mc_groupname", item.group.gropuName);
         jQuery(itemInput).click((function(local_item) {
             return function(e) {
                 item.action(local_item, e.target.checked);
@@ -348,13 +519,13 @@ overviewer.views.SignControlView = Backbone.View.extend({
         var textNode = document.createElement('text');
         if(item.icon) {
             textNode.innerHTML = '<img width="15" height="15" src="' + 
-                item.icon + '">' + item.label + '<br/>';
+                item.icon + '">' + item.group.displayName + '&nbsp;<br/>';
         } else {
-            textNode.innerHTML = item.label + '<br/>';
+            textNode.innerHTML = item.group.displayName + '&nbsp;<br/>';
         }
 
         itemDiv.appendChild(textNode);
-
+        itemDiv.style.whiteSpace = "nowrap";
 
     },
 });

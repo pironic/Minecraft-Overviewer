@@ -158,7 +158,8 @@ get_lighting_color(RenderPrimitiveLighting *self, RenderState *state,
     blocklevel = get_data(state, BLOCKLIGHT, x, y, z);
 
     /* special half-step handling, stairs handling */
-    if (block == 44 || block == 53 || block == 67 || block == 108 || block == 109 || block == 114) {
+    if (block == 44 || block == 53 || block == 67 || block == 108 || block == 109 || block == 114 ||
+        block == 128 || block == 134 || block == 135 || block == 136) {
         unsigned int upper_block;
         
         /* stairs and half-blocks take the skylevel from the upper block if it's transparent */
@@ -167,7 +168,9 @@ get_lighting_color(RenderPrimitiveLighting *self, RenderState *state,
         do {
             upper_counter++; 
             upper_block = get_data(state, BLOCKS, x, y + upper_counter, z);
-        } while (upper_block == 44 || upper_block == 53 || upper_block == 67 || upper_block == 108 || upper_block == 109 || upper_block == 114);
+        } while (upper_block == 44 || upper_block == 53 || upper_block == 67 || upper_block == 108 ||
+                 upper_block == 109 || upper_block == 114 || upper_block == 128 || upper_block == 134 ||
+                 upper_block == 135 || upper_block == 136);
         if (is_transparent(upper_block)) {
             skylevel = get_data(state, SKYLIGHT, x, y + upper_counter, z);
         } else {
@@ -202,7 +205,7 @@ lighting_is_face_occluded(RenderState *state, int skip_sides, int x, int y, int 
             /* this face isn't visible, so don't draw anything */
             return 1;
         }
-    } else if (skip_sides) {
+    } else if (!skip_sides) {
         unsigned short block = get_data(state, BLOCKS, x, y, z);
         if (!is_transparent(block)) {
             /* the same thing but for adjacent chunks, this solves an
@@ -242,8 +245,8 @@ lighting_start(void *data, RenderState *state, PyObject *support) {
     RenderPrimitiveLighting* self;
     self = (RenderPrimitiveLighting *)data;
     
-    /* skip sides by default */
-    self->skip_sides = 1;
+    /* don't skip sides by default */
+    self->skip_sides = 0;
 
     if (!render_mode_parse_option(support, "strength", "f", &(self->strength)))
         return 1;

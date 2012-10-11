@@ -29,6 +29,8 @@ for many different parts of the code.
  * Aaron Griffith <aargri@gmail.com>
  * Alex Headley <aheadley@waysaboutstuff.com>
  * Alex Jurkiewicz <alex@bluebottle.net.au>
+ * Thomas Lake <tswsl1989@sucs.org>
+ * Richard Pastrick <rpastric@contre.us>
  * Michael Writhe <michael@writhem.com>
  * Xon <Xon@localhost>
 
@@ -41,13 +43,13 @@ feature.
 
  * Albireo <kappa7194@hotmail.it>
  * arrai <array.of.intellect@gmail.com>
- * Kyle Brantley <kyle@averageurl.com>
  * asmodai <asmodai@in-nomine.org>
- * but2002 <barryt_9@hotmail.com>
  * Mark Barnes <mark.e.barnes@gmail.com>
+ * Kyle Brantley <kyle@averageurl.com>
+ * but2002 <barryt_9@hotmail.com>
  * Eric Carr <eric@carr.no>
- * Carter Charbonneau <zcarterc@gmail.com>
  * cbarber <CraigBarber@taryx.com>
+ * Carter Charbonneau <zcarterc@gmail.com>
  * Alex Cline <cline@vivisimo.com>
  * Andrew Clunis <andrew@orospakr.ca>
  * CounterPillow <spam@tes-cheese.ch>
@@ -56,28 +58,30 @@ feature.
  * Ryan Finnie <ryan@feh.colobox.com>
  * Stephen Fluin <stephen@mistuph.com>
  * Pierre Guinoiseau <pierre@guinoiseau.eu>
- * Benjamin Herr <ben@0x539.de>
  * Lucas Hereld <duckman@piratehook.com>
+ * Benjamin Herr <ben@0x539.de>
  * Ryan Hitchman <hitchmanr@gmail.com>
  * Jenny <jennytoo@gmail.com>
  * Michael Jensen <emjay1988@gmail.com>
  * Sean Kilgore <krystalogik@gmail.com>
  * Johan Kiviniemi <devel@johan.kiviniemi.name>
  * Philip Kovac <pkovac@cs.uml.edu>
- * Thomas Lake <tswsl1989@sucs.org>
  * Maciej Malecki <maciej.malecki@hotmail.com>
  * Ryan McCue <ryanmccue@cubegames.net>
  * Zach McCullough <nosrepa@gmail.com>
- * Morlok8k <otis.spankmeyer@gmail.com>
  * Mike <mike@snowcrash.ca>
+ * Morlok8k <otis.spankmeyer@gmail.com>
+ * Adam Novak <interfect@gmail.com>
+ * rakama <ramsesakama@gmail.com>
  * Ryan Rector <rmrector@gmail.com>
- * Richard Pastrick <rpastric@contre.us>
+ * Matti Ruohonen <matti.j.ruohonen@gmail.com>
  * Jason Scheirer <jason.scheirer@gmail.com>
  * Gregory Short <gshort2@gmail.com>
+ * Socolin <beber-le-scaraber@hotmail.fr>
  * Sam Steele <sam@sigbox.c99.org>
  * stoneLeaf <owi.stoneleaf@gmail.com>
  * timwolla <timwolla@mail.develfusion.com>
  * TJ09 <TJ09@localhost>
- * Jeffrey Warren <warren@mit.edu>
  * untergrundbiber <untergrundbiber@github>
  * Philippe Villiers <kissifrot@gmail.com>
+ * Jeffrey Warren <warren@mit.edu>

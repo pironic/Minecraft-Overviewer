@@ -26,12 +26,17 @@
 
 // increment this value if you've made a change to the c extesion
 // and want to force users to rebuild
-#define OVERVIEWER_EXTENSION_VERSION 30
+#define OVERVIEWER_EXTENSION_VERSION 41
 
 /* Python PIL, and numpy headers */
 #include <Python.h>
 #include <Imaging.h>
 #include <numpy/arrayobject.h>
+
+/* like (a * b + 127) / 255), but much faster on most platforms
+   from PIL's _imaging.c */
+#define MULDIV255(a, b, tmp)								\
+	(tmp = (a) * (b) + 128, ((((tmp) >> 8) + (tmp)) >> 8))
 
 /* macro for getting a value out of various numpy arrays the 3D arrays have
    interesting, swizzled coordinates because minecraft (anvil) stores blocks
@@ -64,6 +69,8 @@ PyObject *draw_triangle(PyObject *dest, int inclusive,
                         int x2, int y2,
                         unsigned char r2, unsigned char g2, unsigned char b2,
                         int tux, int tuy, int *touchups, unsigned int num_touchups);
+PyObject *resize_half(PyObject *dest, PyObject *src);
+PyObject *resize_half_wrap(PyObject *self, PyObject *args);
 
 /* forward declaration of RenderMode object */
 typedef struct _RenderMode RenderMode;
@@ -83,6 +90,7 @@ typedef struct {
 } ChunkData;
 typedef struct {
     /* the regionset object, and chunk coords */
+    PyObject *world;
     PyObject *regionset;
     int chunkx, chunky, chunkz;
     
@@ -128,7 +136,7 @@ extern unsigned int max_blockid;
 extern unsigned int max_data;
 extern unsigned char *block_properties;
 static inline int
-block_has_property(unsigned char b, BlockProperty prop) {
+block_has_property(unsigned short b, BlockProperty prop) {
     if (b >= max_blockid || !(block_properties[b] & (1 << KNOWN))) {
         /* block is unknown, return defaults */
         if (prop == TRANSPARENT)
