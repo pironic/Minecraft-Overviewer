@@ -62,7 +62,7 @@ def main():
     parser = OptionParser(usage=helptext, add_help_option=False)
     parser.add_option("-h", "--help", dest="help", action="store_true",
             help="show this help message and exit")
-    parser.add_option("--config", dest="config", action="store", help="Specify the config file to use.")
+    parser.add_option("-c", "--config", dest="config", action="store", help="Specify the config file to use.")
     parser.add_option("-p", "--processes", dest="procs", action="store", type="int",
             help="The number of local worker processes to spawn. Defaults to the number of CPU cores your computer has")
 
@@ -162,6 +162,10 @@ def main():
             print "The Overviewer is a console program.  Please open a Windows command prompt"
             print "first and run Overviewer from there.   Further documentation is available at"
             print "http://docs.overviewer.org/\n"
+            print "\n"
+            print "For a quick-start guide on Windows, visit the following URL:\n"
+            print "http://docs.overviewer.org/en/latest/win_tut/windowsguide/\n"
+
         else:
             # more helpful message for users who know what they're doing
             logging.error("You must either specify --config or give me a world directory and output directory")
@@ -396,9 +400,9 @@ dir but you forgot to put quotes around the directory, since it contains spaces.
         else:
             tex = texcache[texopts_key]
 
-        rset = w.get_regionset(render['dimension'])
+        rset = w.get_regionset(render['dimension'][1])
         if rset == None: # indicates no such dimension was found:
-            logging.error("Sorry, you requested dimension '%s' for %s, but I couldn't find it", render['dimension'], render_name)
+            logging.error("Sorry, you requested dimension '%s' for %s, but I couldn't find it", render['dimension'][0], render_name)
             return 1
 
         #################
@@ -428,7 +432,7 @@ dir but you forgot to put quotes around the directory, since it contains spaces.
 
         # only pass to the TileSet the options it really cares about
         render['name'] = render_name # perhaps a hack. This is stored here for the asset manager
-        tileSetOpts = util.dict_subset(render, ["name", "imgformat", "renderchecks", "rerenderprob", "bgcolor", "defaultzoom", "imgquality", "optimizeimg", "rendermode", "worldname_orig", "title", "dimension", "changelist","showspawn", "overlay","base", "poititle"])
+        tileSetOpts = util.dict_subset(render, ["name", "imgformat", "renderchecks", "rerenderprob", "bgcolor", "defaultzoom", "imgquality", "optimizeimg", "rendermode", "worldname_orig", "title", "dimension", "changelist", "showspawn", "overlay", "base", "poititle", "maxzoom"])
         tileSetOpts.update({"spawn": w.find_true_spawn()}) # TODO find a better way to do this
         tset = tileset.TileSet(w, rset, assetMrg, tex, tileSetOpts, tileset_dir)
         tilesets.append(tset)
@@ -499,6 +503,10 @@ if __name__ == "__main__":
     try:
         ret = main()
         util.nice_exit(ret)
+    except textures.TextureException, e:
+        # this isn't a "bug", so don't print scary traceback
+        logging.error(str(e))
+        util.nice_exit(1)
     except Exception, e:
         logging.exception("""An error has occurred. This may be a bug. Please let us know!
 See http://docs.overviewer.org/en/latest/index.html#help

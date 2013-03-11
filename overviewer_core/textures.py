@@ -29,6 +29,11 @@ import functools
 import util
 from c_overviewer import alpha_over
 
+class TextureException(Exception):
+    "To be thrown when a texture is not found."
+    pass
+
+
 ##
 ## Textures object
 ##
@@ -213,7 +218,7 @@ class Textures(object):
                 if verbose: logging.info("Found %s in '%s'", filename, path)
                 return open(path, mode)
 
-        raise IOError("Could not find the file `{0}'. Try specifying the 'texturepath' option in your config file. Set it to the directory where I can find {0}. Also see <http://docs.overviewer.org/en/latest/running/#installing-the-textures>".format(filename))
+        raise TextureException("Could not find the file `{0}'. Try specifying the 'texturepath' option in your config file. Set it to the directory where I can find {0}. Also see <http://docs.overviewer.org/en/latest/running/#installing-the-textures>".format(filename))
 
     def load_image(self, filename):
         """Returns an image object"""
@@ -231,7 +236,7 @@ class Textures(object):
             # try the MCPatcher case first
             watertexture = self.load_image("custom_water_still.png")
             watertexture = watertexture.crop((0, 0, watertexture.size[0], watertexture.size[0]))
-        except IOError:
+        except TextureException:
             watertexture = self.load_image("water.png")
         self.watertexture = watertexture
         return watertexture
@@ -246,7 +251,7 @@ class Textures(object):
             # try the MCPatcher lava first, in case it's present
             lavatexture = self.load_image("custom_lava_still.png")
             lavatexture = lavatexture.crop((0, 0, lavatexture.size[0], lavatexture.size[0]))
-        except IOError:
+        except TextureException:
             lavatexture = self.load_image("lava.png")
         self.lavatexture = lavatexture
         return lavatexture
@@ -264,7 +269,7 @@ class Textures(object):
             firetextureEW = self.load_image("custom_fire_e_w.png")
             firetextureEW = firetextureEW.crop((0, 0, firetextureEW.size[0], firetextureEW.size[0]))
             firetexture = (firetextureNS,firetextureEW)
-        except IOError:
+        except TextureException:
             fire = self.load_image("fire.png")
             firetexture = (fire, fire)
         self.firetexture = firetexture
@@ -280,7 +285,7 @@ class Textures(object):
             # try the MCPatcher case first
             portaltexture = self.load_image("custom_portal.png")
             portaltexture = portaltexture.crop((0, 0, portaltexture.size[0], portaltexture.size[1]))
-        except IOError:
+        except TextureException:
             portaltexture = self.load_image("portal.png")
         self.portaltexture = portaltexture
         return portaltexture
@@ -1374,6 +1379,8 @@ def slabs(self, blockid, data):
         top = side = self.terrain_images[7]
     elif texture== 5: # stone brick
         top = side = self.terrain_images[54]
+    elif texture== 6: # nether brick slab
+        top = side = self.terrain_images[224]
     else:
         return None
     
@@ -1508,7 +1515,7 @@ def fire(self, blockid, data):
     return img
 
 # monster spawner
-block(blockid=52, top_index=34, transparent=True)
+block(blockid=52, top_index=65, transparent=True)
 
 # wooden, cobblestone, red brick, stone brick, netherbrick, sandstone, spruce, birch and jungle stairs.
 @material(blockid=[53,67,108,109,114,128,134,135,136], data=range(8), transparent=True, solid=True, nospawn=True)
@@ -2408,7 +2415,8 @@ def pressure_plate(self, blockid, data):
 # normal and glowing redstone ore
 block(blockid=[73, 74], top_index=51)
 
-@material(blockid=77, data=range(16), transparent=True)
+# stone a wood buttons
+@material(blockid=(77,143), data=range(16), transparent=True)
 def buttons(self, blockid, data):
 
     # 0x8 is set if the button is pressed mask this info and render
@@ -2431,7 +2439,10 @@ def buttons(self, blockid, data):
         elif data == 3: data = 1
         elif data == 4: data = 2
 
-    t = self.terrain_images[1].copy()
+    if blockid == 77:
+        t = self.terrain_images[1].copy()
+    else:
+        t = self.terrain_images[4].copy()
 
     # generate the texture for the button
     ImageDraw.Draw(t).rectangle((0,0,15,5),outline=(0,0,0,0),fill=(0,0,0,0))
@@ -2974,7 +2985,7 @@ def repeater(self, blockid, data):
     
 # trapdoor
 # TODO the trapdoor is looks like a sprite when opened, that's not good
-@material(blockid=96, data=range(8), transparent=True, nospawn=True)
+@material(blockid=96, data=range(16), transparent=True, nospawn=True)
 def trapdoor(self, blockid, data):
 
     # rotation
@@ -3008,7 +3019,12 @@ def trapdoor(self, blockid, data):
             img = self.build_full_block(None, None, None, texture, None)
         
     elif data & 0x4 == 0: # closed trapdoor
-        img = self.build_full_block((texture, 12), None, None, texture, texture)
+        if data & 0x8 == 0x8: # is a top trapdoor
+            img = Image.new("RGBA", (24,24), self.bgcolor)
+            t = self.build_full_block((texture, 12), None, None, texture, texture)
+            alpha_over(img, t, (0,-9),t)
+        else: # is a bottom trapdoor
+            img = self.build_full_block((texture, 12), None, None, texture, texture)
     
     return img
 
@@ -3582,4 +3598,265 @@ def cocoa_plant(self, blockid, data):
         if orientation == 0:
             img = img.transpose(Image.FLIP_LEFT_RIGHT)
 
+    return img
+
+# command block
+block(blockid=137, top_index=184)
+
+# beacon block
+# at the moment of writing this, it seems the beacon block doens't use
+# the data values
+@material(blockid=138, transparent=True, nodata = True)
+def beacon(self, blockid, data):
+    # generate the three pieces of the block
+    t = self.terrain_images[49]
+    glass = self.build_block(t,t)
+    t = self.terrain_images[37]
+    obsidian = self.build_full_block((t,12),None, None, t, t)
+    obsidian = obsidian.resize((20,20), Image.ANTIALIAS)
+    t = self.terrain_images[41]
+    crystal = self.build_block(t,t)
+    crystal = crystal.resize((16,16),Image.ANTIALIAS)
+    
+    # compose the block
+    img = Image.new("RGBA", (24,24), self.bgcolor)
+    alpha_over(img, obsidian, (2, 4), obsidian)
+    alpha_over(img, crystal, (4,3), crystal)
+    alpha_over(img, glass, (0,0), glass)
+    
+    return img
+
+# cobbleston and mossy cobblestone walls
+# one additional bit of data value added for mossy and cobblestone
+@material(blockid=139, data=range(32), transparent=True, nospawn=True)
+def cobblestone_wall(self, blockid, data):
+    # no rotation, uses pseudo data
+    if data & 0b10000 == 0:
+        # cobblestone
+        t = self.terrain_images[16].copy()
+    else:
+        # mossy cobblestone
+        t = self.terrain_images[36].copy()
+
+    wall_pole_top = t.copy()
+    wall_pole_side = t.copy()
+    wall_side_top = t.copy()
+    wall_side = t.copy()
+    # _full is used for walls without pole
+    wall_side_top_full = t.copy()
+    wall_side_full = t.copy()
+
+    # generate the textures of the wall
+    ImageDraw.Draw(wall_pole_top).rectangle((0,0,3,15),outline=(0,0,0,0),fill=(0,0,0,0))
+    ImageDraw.Draw(wall_pole_top).rectangle((12,0,15,15),outline=(0,0,0,0),fill=(0,0,0,0))
+    ImageDraw.Draw(wall_pole_top).rectangle((0,0,15,3),outline=(0,0,0,0),fill=(0,0,0,0))
+    ImageDraw.Draw(wall_pole_top).rectangle((0,12,15,15),outline=(0,0,0,0),fill=(0,0,0,0))
+
+    ImageDraw.Draw(wall_pole_side).rectangle((0,0,3,15),outline=(0,0,0,0),fill=(0,0,0,0))
+    ImageDraw.Draw(wall_pole_side).rectangle((12,0,15,15),outline=(0,0,0,0),fill=(0,0,0,0))
+
+    # Create the sides and the top of the pole
+    wall_pole_side = self.transform_image_side(wall_pole_side)
+    wall_pole_other_side = wall_pole_side.transpose(Image.FLIP_LEFT_RIGHT)
+    wall_pole_top = self.transform_image_top(wall_pole_top)
+
+    # Darken the sides slightly. These methods also affect the alpha layer,
+    # so save them first (we don't want to "darken" the alpha layer making
+    # the block transparent)
+    sidealpha = wall_pole_side.split()[3]
+    wall_pole_side = ImageEnhance.Brightness(wall_pole_side).enhance(0.8)
+    wall_pole_side.putalpha(sidealpha)
+    othersidealpha = wall_pole_other_side.split()[3]
+    wall_pole_other_side = ImageEnhance.Brightness(wall_pole_other_side).enhance(0.7)
+    wall_pole_other_side.putalpha(othersidealpha)
+
+    # Compose the wall pole
+    wall_pole = Image.new("RGBA", (24,24), self.bgcolor)
+    alpha_over(wall_pole,wall_pole_side, (3,4),wall_pole_side)
+    alpha_over(wall_pole,wall_pole_other_side, (9,4),wall_pole_other_side)
+    alpha_over(wall_pole,wall_pole_top, (0,0),wall_pole_top)
+    
+    # create the sides and the top of a wall attached to a pole
+    ImageDraw.Draw(wall_side).rectangle((0,0,15,2),outline=(0,0,0,0),fill=(0,0,0,0))
+    ImageDraw.Draw(wall_side).rectangle((0,0,11,15),outline=(0,0,0,0),fill=(0,0,0,0))
+    ImageDraw.Draw(wall_side_top).rectangle((0,0,11,15),outline=(0,0,0,0),fill=(0,0,0,0))
+    ImageDraw.Draw(wall_side_top).rectangle((0,0,15,4),outline=(0,0,0,0),fill=(0,0,0,0))
+    ImageDraw.Draw(wall_side_top).rectangle((0,11,15,15),outline=(0,0,0,0),fill=(0,0,0,0))
+    # full version, without pole
+    ImageDraw.Draw(wall_side_full).rectangle((0,0,15,2),outline=(0,0,0,0),fill=(0,0,0,0))
+    ImageDraw.Draw(wall_side_top_full).rectangle((0,4,15,15),outline=(0,0,0,0),fill=(0,0,0,0))
+    ImageDraw.Draw(wall_side_top_full).rectangle((0,4,15,15),outline=(0,0,0,0),fill=(0,0,0,0))
+
+    # compose the sides of a wall atached to a pole
+    tmp = Image.new("RGBA", (24,24), self.bgcolor)
+    wall_side = self.transform_image_side(wall_side)
+    wall_side_top = self.transform_image_top(wall_side_top)
+
+    # Darken the sides slightly. These methods also affect the alpha layer,
+    # so save them first (we don't want to "darken" the alpha layer making
+    # the block transparent)
+    sidealpha = wall_side.split()[3]
+    wall_side = ImageEnhance.Brightness(wall_side).enhance(0.7)
+    wall_side.putalpha(sidealpha)
+
+    alpha_over(tmp,wall_side, (0,0),wall_side)
+    alpha_over(tmp,wall_side_top, (-5,3),wall_side_top)
+    wall_side = tmp
+    wall_other_side = wall_side.transpose(Image.FLIP_LEFT_RIGHT)
+
+    # compose the sides of the full wall
+    tmp = Image.new("RGBA", (24,24), self.bgcolor)
+    wall_side_full = self.transform_image_side(wall_side_full)
+    wall_side_top_full = self.transform_image_top(wall_side_top_full.rotate(90))
+
+    # Darken the sides slightly. These methods also affect the alpha layer,
+    # so save them first (we don't want to "darken" the alpha layer making
+    # the block transparent)
+    sidealpha = wall_side_full.split()[3]
+    wall_side_full = ImageEnhance.Brightness(wall_side_full).enhance(0.7)
+    wall_side_full.putalpha(sidealpha)
+
+    alpha_over(tmp,wall_side_full, (4,0),wall_side_full)
+    alpha_over(tmp,wall_side_top_full, (3,-4),wall_side_top_full)
+    wall_side_full = tmp
+    wall_other_side_full = wall_side_full.transpose(Image.FLIP_LEFT_RIGHT)
+
+    # Create img to compose the wall
+    img = Image.new("RGBA", (24,24), self.bgcolor)
+
+    # Position wall imgs around the wall bit stick
+    pos_top_left = (-5,-2)
+    pos_bottom_left = (-8,4)
+    pos_top_right = (5,-3)
+    pos_bottom_right = (7,4)
+    
+    # +x axis points top right direction
+    # +y axis points bottom right direction
+    # There are two special cases for wall without pole.
+    # Normal case: 
+    # First compose the walls in the back of the image, 
+    # then the pole and then the walls in the front.
+    if (data == 0b1010) or (data == 0b11010):
+        alpha_over(img, wall_other_side_full,(0,2), wall_other_side_full)
+    elif (data == 0b0101) or (data == 0b10101):
+        alpha_over(img, wall_side_full,(0,2), wall_side_full)
+    else:
+        if (data & 0b0001) == 1:
+            alpha_over(img,wall_side, pos_top_left,wall_side)                # top left
+        if (data & 0b1000) == 8:
+            alpha_over(img,wall_other_side, pos_top_right,wall_other_side)    # top right
+
+        alpha_over(img,wall_pole,(0,0),wall_pole)
+            
+        if (data & 0b0010) == 2:
+            alpha_over(img,wall_other_side, pos_bottom_left,wall_other_side)      # bottom left    
+        if (data & 0b0100) == 4:
+            alpha_over(img,wall_side, pos_bottom_right,wall_side)                  # bottom right
+    
+    return img
+
+# carrots and potatoes
+@material(blockid=[141,142], data=range(8), transparent=True, nospawn=True)
+def crops(self, blockid, data):
+    if data != 7: # when growing they look the same
+        # data = 7 -> fully grown, everything else is growing
+        # this seems to work, but still not sure
+        raw_crop = self.terrain_images[200 + (data % 3)]
+    elif blockid == 141: # carrots
+        raw_crop = self.terrain_images[203]
+    else: # potatoes
+        raw_crop = self.terrain_images[204]
+    crop1 = self.transform_image_top(raw_crop)
+    crop2 = self.transform_image_side(raw_crop)
+    crop3 = crop2.transpose(Image.FLIP_LEFT_RIGHT)
+
+    img = Image.new("RGBA", (24,24), self.bgcolor)
+    alpha_over(img, crop1, (0,12), crop1)
+    alpha_over(img, crop2, (6,3), crop2)
+    alpha_over(img, crop3, (6,3), crop3)
+    return img
+
+# anvils
+@material(blockid=145, data=range(12), transparent=True)
+def anvil(self, blockid, data):
+    
+    # anvils only have two orientations, invert it for rotations 1 and 3
+    orientation = data & 0x1
+    if self.rotation in (1,3):
+        if orientation == 1:
+            orientation = 0
+        else:
+            orientation = 1
+
+    # get the correct textures
+    # the bits 0x4 and 0x8 determine how damaged is the anvil
+    if (data & 0xc) == 0: # non damaged anvil
+        top = self.terrain_images[231]
+    elif (data & 0xc) == 0x4: # slightly damaged
+        top = self.terrain_images[232]
+    elif (data & 0xc) == 0x8: # very damaged
+        top = self.terrain_images[216]
+    # everything else use this texture
+    big_side = self.terrain_images[215].copy()
+    small_side = self.terrain_images[215].copy()
+    base = self.terrain_images[215].copy()
+    small_base = self.terrain_images[215].copy()
+    
+    # cut needed patterns
+    ImageDraw.Draw(big_side).rectangle((0,8,15,15),outline=(0,0,0,0),fill=(0,0,0,0))
+    ImageDraw.Draw(small_side).rectangle((0,0,2,15),outline=(0,0,0,0),fill=(0,0,0,0))
+    ImageDraw.Draw(small_side).rectangle((13,0,15,15),outline=(0,0,0,0),fill=(0,0,0,0))
+    ImageDraw.Draw(small_side).rectangle((0,8,15,15),outline=(0,0,0,0),fill=(0,0,0,0))
+    ImageDraw.Draw(base).rectangle((0,0,15,15),outline=(0,0,0,0))
+    ImageDraw.Draw(base).rectangle((1,1,14,14),outline=(0,0,0,0))
+    ImageDraw.Draw(small_base).rectangle((0,0,15,15),outline=(0,0,0,0))
+    ImageDraw.Draw(small_base).rectangle((1,1,14,14),outline=(0,0,0,0))
+    ImageDraw.Draw(small_base).rectangle((2,2,13,13),outline=(0,0,0,0))
+    ImageDraw.Draw(small_base).rectangle((3,3,12,12),outline=(0,0,0,0))
+    
+    # check orientation and compose the anvil
+    if orientation == 1: # bottom-left top-right
+        top = top.rotate(90)
+        left_side = small_side
+        left_pos = (1,7)
+        right_side = big_side
+        right_pos = (10,5)
+    else: # top-left bottom-right
+        right_side = small_side
+        right_pos = (12,7)
+        left_side = big_side
+        left_pos = (3,5)
+    
+    img = Image.new("RGBA", (24,24), self.bgcolor)
+    
+    # darken sides
+    alpha = big_side.split()[3]
+    big_side = ImageEnhance.Brightness(big_side).enhance(0.8)
+    big_side.putalpha(alpha)
+    alpha = small_side.split()[3]
+    small_side = ImageEnhance.Brightness(small_side).enhance(0.9)
+    small_side.putalpha(alpha)
+    alpha = base.split()[3]
+    base_d = ImageEnhance.Brightness(base).enhance(0.8)
+    base_d.putalpha(alpha)
+    
+    # compose
+    base = self.transform_image_top(base)
+    base_d = self.transform_image_top(base_d)
+    small_base = self.transform_image_top(small_base)
+    top = self.transform_image_top(top)
+    
+    alpha_over(img, base_d, (0,12), base_d)
+    alpha_over(img, base_d, (0,11), base_d)
+    alpha_over(img, base_d, (0,10), base_d)
+    alpha_over(img, small_base, (0,10), small_base)
+    
+    alpha_over(img, top, (0,0), top)
+    
+    left_side = self.transform_image_side(left_side)
+    right_side = self.transform_image_side(right_side).transpose(Image.FLIP_LEFT_RIGHT)
+    
+    alpha_over(img, left_side, left_pos, left_side)
+    alpha_over(img, right_side, right_pos, right_side)
+    
     return img

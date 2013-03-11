@@ -38,7 +38,7 @@ of the following:
   Map expansions double the width and height of the map, so you will eventually
   hit a map size that is unlikely to need another level.
 
-You've added a few feature or changed textures, but it's not showing up on my map!
+You've added a new feature or changed textures, but it's not showing up on my map!
 ----------------------------------------------------------------------------------
 
 Some new features will only show up in newly-rendered areas. Use the
@@ -64,7 +64,8 @@ I downloaded the Windows version but when I double-click it, the window closes r
 The Overviewer is a command line program and must be run from a command line. It
 is necessary to become at least a little familiar with a command line to run The
 Overviewer (if you have no interest in this, perhaps this isn't the mapping
-program for you).
+program for you). A brief guide is provided on the
+:doc:`win_tut/windowsguide` page.
 
 Unfortunately, A full tutorial of the Windows command line is out of scope for this
 documentation; consult the almighty Google for tutorials and information on
@@ -89,6 +90,21 @@ fine.
 If you are seeing exorbitant memory usage, then it is likely either a bug or a
 subtly corrupted world. Please file an issue or come talk to us on IRC so we can
 take a look! See :ref:`help`.
+
+How can I log The Overviewer's output to a file?
+------------------------------------------------
+
+If you are on a UNIX-like system like MacOSX or Linux, you can use shell redirection
+to write the output into a file::
+
+    overviewer.py --config=myconfig.py > renderlog.log 2>&1
+
+What this does is redirect the previous commands standard output to the file "renderlog.log",
+and redirect the standard error to the standard output. The file will be overwritten each time
+you run this command line; to simply append the output to the file, use two greater than signs::
+
+    overviewer.py --config=myconfig.py >> renderlog.log 2>&1
+
 
 .. _cropping_faq:
 

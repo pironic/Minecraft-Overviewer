@@ -137,7 +137,7 @@ overviewer.views.CoordboxView = Backbone.View.extend({
     }
 });
 
-overviewer.views.ProgressView = Backbone.View.extend({	
+overviewer.views.ProgressView = Backbone.View.extend({
     initialize: function() {
         this.el.id = 'progressDiv';
         this.el.innerHTML = 'Current Render Progress';
@@ -461,7 +461,8 @@ overviewer.views.SignControlView = Backbone.View.extend({
                             'position': overviewer.util.fromWorldToLatLng(entity.x,
                                 entity.y, entity.z, overviewer.mapView.options.currentTileSet),
                             'map':      overviewer.map,
-                            'title':    jQuery.trim(entity.text), 
+                            'title':    jQuery.trim(entity.hovertext), 
+                            'content':  jQuery.trim(entity.text),
                             'icon':     iconURL,
                             'visible':  false
                     }); 
@@ -553,6 +554,25 @@ overviewer.views.SpawnIconView = Backbone.View.extend({
                 }); 
             overviewer.collections.spawnMarker.setVisible(true);
         }
+    }
+});
+
+overviewer.views.LocationIconView = Backbone.View.extend({
+    render: function() {
+        // 
+    if (overviewer.collections.locationMarker) {
+        overviewer.collections.locationMarker.setMap(null);
+        overviewer.collections.locationMarker = null;
+    }
+    overviewer.collections.locationMarker = new google.maps.Marker({
+        'position': overviewer.map.getCenter(), 
+        'map':      overviewer.map,
+        'title':    'location',
+        'icon':     overviewerConfig.CONST.image.queryMarker,
+        'visible':  false
+    }); 
+    overviewer.collections.locationMarker.setVisible(true);
+
     }
 });
 
